@@ -40,7 +40,7 @@ if(isset($_REQUEST['language'])){
 }
 
 if(!isset($langCode2)){
-    $langCode2 = 'en';
+    $langCode2 = 'sq';
 }
 
 $_SESSION['language'] = $langCode2;

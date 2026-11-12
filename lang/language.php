@@ -8,11 +8,15 @@ if(isset($_REQUEST['language']) && in_array($_REQUEST['language'], array_keys($s
     $langCode = $_REQUEST['language'];
 } elseif(isset($_SESSION['language'])){
     $langCode = $_SESSION['language'];
-    } elseif (isset($_COOKIE['remember_me_lang'])){
-        if(in_array($_COOKIE['remember_me_lang'], array_keys($supportedLanguages))){
-            $langCode = $_COOKIE['remember_me_lang'];
-}
+} elseif (isset($_COOKIE['remember_me_lang'])){
+    if(in_array($_COOKIE['remember_me_lang'], array_keys($supportedLanguages))){
+        $langCode = $_COOKIE['remember_me_lang'];
     }
+}
+
+if(!isset($langCode)){
+    $langCode = 'sq';
+}
 
 include "lang/lang_".$langCode.".php";
 
