@@ -1,0 +1,93 @@
+services:
+
+  # ── PHP/Apache Application ────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sia_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-sia}
+      DB_USER: ${DB_USER:-sia_user}
+      DB_PASS: ${DB_PASS:-sia_password}
+      # Set to true to auto-install DB schema on first boot
+      SIA_AUTO_INSTALL: ${SIA_AUTO_INSTALL:-false}
+      # Set to true to regenerate Data.php even if it already exists
+      FORCE_DATA_REGEN: ${FORCE_DATA_REGEN:-false}
+    volumes:
+      # Persist uploaded student/staff photos and attachments
+      - sia_assets:/var/www/html/assets/studentphotos
+      - sia_assets_staff:/var/www/html/assets/staffphotos
+      # Optional: mount a custom Data.php (e.g. from secrets manager)
+      # - ./Data.php:/var/www/html/Data.php:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sia_net
+
+  # ── MySQL Database ─────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: sia_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret}
+      MYSQL_DATABASE: ${DB_NAME:-sia}
+      MYSQL_USER: ${DB_USER:-sia_user}
+      MYSQL_PASSWORD: ${DB_PASS:-sia_password}
+    ports:
+      - "${DB_EXPOSE_PORT:-3306}:3306"
+    volumes:
+      - sia_db_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+      - ./docker/my.cnf:/etc/mysql/conf.d/sia.cnf:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --max_allowed_packet=64M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_secret}"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    networks:
+      - sia_net
+
+  # ── phpMyAdmin (optional, dev/admin tool) ──────────────────────────────────
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: sia_pma
+    restart: unless-stopped
+    profiles:
+      - admin
+    ports:
+      - "${PMA_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sia_net
+
+volumes:
+  sia_db_data:
+    driver: local
+  sia_assets:
+    driver: local
+  sia_assets_staff:
+    driver: local
+
+networks:
+  sia_net:
+    driver: bridge
