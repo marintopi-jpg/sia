@@ -28,7 +28,7 @@
                     <li><a href="http://windows.microsoft.com/ie" target="_blank"><img src="assets/icon_explorer.png" alt="Internet Explorer"/></a></li>
                 </ul>
                 <div class="orr">- OR -</div>
-                <h3>If you have disabled <strong>JavaScript</strong>, you must re-enable it to use opensis.</h3>
+                <h3>If you have disabled <strong>JavaScript</strong>, you must re-enable it to use SIA.</h3>
             </div>
         </div>
 

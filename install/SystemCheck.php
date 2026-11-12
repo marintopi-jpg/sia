@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 
 #  schools from Open Solutions for Education, Inc. web: www.os4ed.com
@@ -55,7 +55,7 @@ $err = 0;
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>openSIS Installer</title>
+        <title>SIA Installer</title>
         <link href="../assets/css/icons/fontawesome/styles.min.css" rel="stylesheet">
         <link rel="stylesheet" type="text/css" href="../assets/css/bootstrap.min.css">
         <link rel="stylesheet" href="assets/css/installer.css?v=<?php echo rand(000, 999); ?>" type="text/css" />
@@ -67,9 +67,9 @@ $err = 0;
                 <div class="panel">
                     <div class="panel-heading clearfix">
                         <div class="logo">
-                            <img src="assets/images/opensis_logo.png" alt="openSIS">
+                            <img src="assets/images/opensis_logo.png" alt="SIA">
                         </div>   
-                        <h3>openSIS Installation - System Requirements</h3>                 
+                        <h3>SIA Installation - System Requirements</h3>                 
                     </div>
                     <div class="panel-body">
                         <div class="installation-steps-wrapper">
@@ -83,7 +83,7 @@ $err = 0;
                                     <li>Ready to Go!</li>
                                 </ul>
                                 <!--<h4 class="no-margin">Installation Prerequisite</h4>
-                                <p>Before you install openSIS, you need to have Apache web server, MySQL database server and php scripting language setup in your machine.</p>
+                                <p>Before you install SIA, you need to have Apache web server, MySQL database server and php scripting language setup in your machine.</p>
                                 <p>You can download an all-inclusive package from: <a href="https://www.apachefriends.org/download.html">https://www.apachefriends.org/download.html</a></p>
                                 <p>Select the download package for the operating system you are using on your machine. Install that first and then start the openSIS installer.</p>-->
                             </div>
@@ -157,7 +157,7 @@ $err = 0;
                                 if ($err == 1) {
                                     echo '<div class="text-danger text-italic"><i class="fa fa-info-circle"></i> It seems like some of the system requirements are not met to continue installation. Please fulfill the pre-requisites and click <b>Check Again</b>.</div>';
                                 } else {
-                                    echo '<div class="text-success text-italic">Hurray! your system meets the requirements for openSIS installation.</div>';
+                                    echo '<div class="text-success text-italic">Hurray! your system meets the requirements for SIA Installation.</div>';
                                 }
                                 ?>
                                 <hr/>

@@ -56,7 +56,7 @@ if (!defined('CONFIG_INC')) {
     $htmldocAssetsPath = '';        // way htmldoc accesses the assets/ directory, possibly different than user - empty string means no translation
     //    $StudentPicturesPath = 'assets/studentphotos/';
     //    $UserPicturesPath = 'assets/userphotos/';
-    $openSISTitle = "openSIS Student Information System";
+    $openSISTitle = "SIA Student Information System";
     $openSISAdmins = '1';            // can be list such as '1,23,50' - note, these should be id's in the DefaultSyear, otherwise they can't login anyway
     $openSISNotifyAddress = '';
     $msgFlag = '';

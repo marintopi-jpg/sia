@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 
 #  schools from Open Solutions for Education, Inc. web: www.os4ed.com
@@ -33,7 +33,7 @@ error_reporting(0);
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>openSIS Installer</title>
+        <title>SIA Installer</title>
         <link href="../assets/css/icons/fontawesome/styles.min.css" rel="stylesheet">
         <link rel="stylesheet" type="text/css" href="../assets/css/bootstrap.min.css">
         <link rel="stylesheet" href="assets/css/installer.css?v=<?php echo rand(000, 999); ?>" type="text/css" />
@@ -72,12 +72,12 @@ if(page && page!="index.php" ){
                         <div class="row">
                             <div class="col-xs-12">
                                 <div class="logo">
-                                    <img src="assets/images/opensis_logo.png" alt="openSIS">
+                                    <img src="assets/images/opensis_logo.png" alt="SIA">
                                 </div>
                                 <?php if (isset($_REQUEST['mod']) && $_REQUEST['mod']!='upgrade') { ?>
-                                    <h3>openSIS Installation - Database Connection</h3>
+                                    <h3>SIA Installation - Database Connection</h3>
                                 <?php } else { ?>
-                                    <h3>openSIS Installation - Database Connection</h3>
+                                    <h3>SIA Installation - Database Connection</h3>
                                 <?php } ?>
                             </div>
                             <!--                            <div class="col-xs-4 text-center" style="padding: 30px 20px 0;">
@@ -128,7 +128,7 @@ if(page && page!="index.php" ){
 //                                    echo '<h4 class = "no-margin">You have chosen upgrade</h4>';
 //                                    $_SESSION['mod'] = 'upgrade';
 //                                } else {
-//                                    echo '<h4 class = "no-margin">Beginning new openSIS installation</h4>';
+//                                    echo '<h4 class = "no-margin">Beginning new SIA Installation</h4>';
 //                                }
 //
 //                                if ($ver_comp == 'true') {

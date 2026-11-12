@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 
 #  schools from Open Solutions for Education, Inc. web: www.os4ed.com
@@ -230,7 +230,7 @@ function db_show_error($sql, $failnote, $additional = '') {
 			<TD><pre>" . date("m/d/Y h:i:s") . "</pre></TD>
 		</TR><TR>
 			<TD align=right></TD>
-			<TD>openSIS has encountered an error that could have resulted from any of the following:
+			<TD>SIA has encountered an error that could have resulted from any of the following:
 			<br/>
 			<ul>
 			<li>Invalid data input</li>
@@ -238,7 +238,7 @@ function db_show_error($sql, $failnote, $additional = '') {
 			<li>Program error</li>
 			</ul>
 			
-			Please take this screen shot and send it to your openSIS representative for debugging and resolution.
+			Please take this screen shot and send it to your SIA representative for debugging and resolution.
 			</TD>
 		</TR>
 		
@@ -255,7 +255,7 @@ function db_show_error($sql, $failnote, $additional = '') {
         $message .= "\n $sql \n";
         $message .= "Request Array: \n" . ShowVar($_REQUEST, 'Y', 'N');
         $message .= "\n\nSession Array: \n" . ShowVar($_SESSION, 'Y', 'N');
-        mail($openSISNotifyAddress, 'openSIS Database Error', $message);
+        mail($openSISNotifyAddress, 'SIA Database Error', $message);
     }
 
     die();
@@ -609,7 +609,7 @@ if ($_SESSION['PageAccess']!= 'stu_pass' && $_SESSION['PageAccess']!= 'stf_pass'
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>openSIS Student Information System</title>
+        <title>SIA Student Information System</title>
         <link rel="shortcut icon" href="favicon.ico">
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <link href="styles/fonts/font-awesome/css/font-awesome.min.css" rel="stylesheet">
@@ -678,7 +678,7 @@ if ($_SESSION['PageAccess']!= 'stu_pass' && $_SESSION['PageAccess']!= 'stf_pass'
 
                     <div class="panel-heading">
                         <div class="logo">
-                            <img src="assets/images/opensis_logo.png" alt="openSIS" />
+                            <img src="assets/images/opensis_logo.png" alt="SIA" />
                         </div>                    
                         <h3>Forgot Password</h3>
                     </div>

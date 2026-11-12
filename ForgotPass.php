@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 
 #  schools from Open Solutions for Education, Inc. web: www.os4ed.com
@@ -276,7 +276,7 @@ function db_show_error($sql, $failnote, $additional = '') {
         $message .= "\n $sql \n";
         $message .= "Request Array: \n" . ShowVar($_REQUEST, 'Y', 'N');
         $message .= "\n\nSession Array: \n" . ShowVar($_SESSION, 'Y', 'N');
-        mail($openSISNotifyAddress, 'openSIS Database Error', $message);
+        mail($openSISNotifyAddress, 'SIA Database Error', $message);
     }
 
     die();
@@ -295,7 +295,7 @@ if(langDirection()=='rtl') { $dir="rtl"; }else{ $dir="ltr"; }
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>openSIS Student Information System</title>
+        <title>SIA Student Information System</title>
         <link rel="shortcut icon" href="favicon.ico">
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <link href="assets/css/icons/icomoon/styles.css" rel="stylesheet" type="text/css">
@@ -384,7 +384,7 @@ if(langDirection()=='rtl') { $dir="rtl"; }else{ $dir="ltr"; }
 
                     <div class="panel-heading">
                         <div class="logo">
-                            <img src="assets/images/opensis_logo.png" alt="openSIS" />
+                            <img src="assets/images/opensis_logo.png" alt="SIA" />
                         </div>
                     </div>
 

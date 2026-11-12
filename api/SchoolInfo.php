@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 /*
  * To change this template, choose Tools | Templates
@@ -238,7 +238,7 @@ function db_show_error($sql, $failnote, $additional = '') {
 			<TD><pre>" . date("m/d/Y h:i:s") . "</pre></TD>
 		</TR><TR>
 			<TD align=right></TD>
-			<TD>openSIS has encountered an error that could have resulted from any of the following:
+			<TD>SIA has encountered an error that could have resulted from any of the following:
 			<br/>
 			<ul>
 			<li>Invalid data input</li>
@@ -246,7 +246,7 @@ function db_show_error($sql, $failnote, $additional = '') {
 			<li>Program error</li>
 			</ul>
 			
-			Please take this screen shot and send it to your openSIS representative for debugging and resolution.
+			Please take this screen shot and send it to your SIA representative for debugging and resolution.
 			</TD>
 		</TR>
 		
@@ -263,7 +263,7 @@ function db_show_error($sql, $failnote, $additional = '') {
         $message .= "\n $sql \n";
         $message .= "Request Array: \n" . ShowVar($_REQUEST, 'Y', 'N');
         $message .= "\n\nSession Array: \n" . ShowVar($_SESSION, 'Y', 'N');
-        mail($openSISNotifyAddress, 'openSIS Database Error', $message);
+        mail($openSISNotifyAddress, 'SIA Database Error', $message);
     }
 
     die();

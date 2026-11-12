@@ -1,8 +1,8 @@
-# openSIS Classic
+# SIA Classic
 Community Edition version 9.3 (Rel date: 06/02/2026)
 Created by [OS4ED](https://www.os4ed.com/)
 
-openSIS is an easy to use Student Information System for organizing student information and school-related operations to promote efficiency in K-12, trade schools and higher education school systems.
+SIA is an easy to use Student Information System for organizing student information and school-related operations to promote efficiency in K-12, trade schools and higher education school systems.
 
 ## Key Features
 

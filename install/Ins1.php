@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 
@@ -42,7 +42,7 @@ $err .= '<!DOCTYPE html>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>openSIS Installer</title>
+        <title>SIA Installer</title>
         <link href="../assets/css/icons/fontawesome/styles.min.css" rel="stylesheet">
         <link rel="stylesheet" type="text/css" href="../assets/css/bootstrap.min.css">
         <link rel="stylesheet" href="assets/css/installer.css?v='.rand(000, 999).'" type="text/css" />
@@ -54,9 +54,9 @@ $err .= '<!DOCTYPE html>
                 <div class="panel">
                     <div class="panel-heading">
                         <div class="logo">
-                            <img src="assets/images/opensis_logo.png" alt="openSIS">
+                            <img src="assets/images/opensis_logo.png" alt="SIA">
                         </div>  
-                        <h3>openSIS Installation</h3>                      
+                        <h3>SIA Installation</h3>                      
                     </div>
                     <div class="panel-body">
                         <div class="installation-steps-wrapper">
@@ -118,7 +118,7 @@ if ($dbconn->connect_errno != 0) {
                 <meta charset="utf-8">
                 <meta http-equiv="X-UA-Compatible" content="IE=edge">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>openSIS Installer</title>
+                <title>SIA Installer</title>
                 <link href="../assets/css/icons/fontawesome/styles.min.css" rel="stylesheet">
                 <link rel="stylesheet" type="text/css" href="../assets/css/bootstrap.min.css">
                 <link rel="stylesheet" href="assets/css/installer.css?v='.rand(000, 999).'" type="text/css" />
@@ -130,9 +130,9 @@ if ($dbconn->connect_errno != 0) {
                         <div class="panel" style="width: 50%;">
                             <div class="panel-heading">
                                 <div class="logo">
-                                    <img src="assets/images/opensis_logo.png" alt="openSIS">
+                                    <img src="assets/images/opensis_logo.png" alt="SIA">
                                 </div>
-                                <h3>openSIS Installation</h3>
+                                <h3>SIA Installation</h3>
                             </div>
                             <div class="panel-body">
                                 <div class="padding-20 class="text-center"">
