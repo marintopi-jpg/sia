@@ -44,9 +44,15 @@ session_start();
 $index_commit_in    =   "";
 $index_commit_out   =   "";
 
+if (!file_exists('Data.php') && is_dir('install')) {
+    header("Location: install/index.php");
+    exit;
+}
+
 $url = validateQueryString(curPageURL());
 if ($url === FALSE) {
     header('Location: index.php');
+    exit;
 }
 
 if (!defined("_eitherYourAccountIsInactiveOrYourAccessPermissionHasBeenRevoked")) {
