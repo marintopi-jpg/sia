@@ -96,14 +96,27 @@ $err .= '<!DOCTYPE html>
     </body>
 </html>';
 //$dbconn = mysqli_connect($_SESSION['host'],$_SESSION['username'],$_SESSION['password'])
-try{
-    $dbconn = new mysqli($_SESSION['server'], $_SESSION['username'], $_SESSION['password'], '', $_SESSION['port']);
-    } catch (Exception $e) {
-        // echo 'Caught exception: ', $e->getMessage(), "\n";
-        exit($err);
+$db_error_detail = '';
+try {
+    mysqli_report(MYSQLI_REPORT_OFF);
+    $dbconn = @new mysqli($_SESSION['server'], $_SESSION['username'], $_SESSION['password'], '', (int)$_SESSION['port']);
+    if ($dbconn->connect_error) {
+        $db_error_detail = $dbconn->connect_error;
     }
-if ($dbconn->connect_errno != 0) {
-    exit($err);
+} catch (Throwable $e) {
+    $db_error_detail = $e->getMessage();
+}
+
+if (!empty($db_error_detail) || !isset($dbconn) || $dbconn->connect_errno != 0) {
+    if (empty($db_error_detail) && isset($dbconn)) {
+        $db_error_detail = $dbconn->connect_error;
+    }
+    $err_with_msg = str_replace(
+        "Couldn't connect to database server: " . $_SESSION['host'],
+        "Couldn't connect to database server: " . $_SESSION['host'] . "<br><small style='color:red; font-size:14px;'>(" . htmlspecialchars($db_error_detail) . ")</small>",
+        $err
+    );
+    exit($err_with_msg);
 } else {
     // Disable strict mode for this session if enabled
     $dbconn->query("SET SESSION sql_mode = ''");
