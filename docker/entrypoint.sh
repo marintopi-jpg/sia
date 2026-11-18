@@ -59,33 +59,28 @@ echo "[SIA] MySQL is ready!"
 if [ "${SIA_AUTO_INSTALL:-false}" = "true" ]; then
     echo "[SIA] Checking if database '${DB_NAME}' needs initialization..."
     TABLE_EXISTS=$(php -r "
-        \$conn = new mysqli('${DB_HOST}', '${DB_USER}', '${DB_PASS}', '${DB_NAME}', ${DB_PORT});
-        \$res  = \$conn->query(\"SHOW TABLES LIKE 'app'\");
-        echo \$res->num_rows;
+        \$conn = @new mysqli('${DB_HOST}', '${DB_USER}', '${DB_PASS}', '${DB_NAME}', (int)'${DB_PORT}');
+        if (\$conn && !\$conn->connect_error) {
+            \$res = \$conn->query(\"SHOW TABLES LIKE 'app'\");
+            echo (\$res && \$res->num_rows > 0) ? 1 : 0;
+        } else {
+            echo '0';
+        }
     " 2>/dev/null || echo "0")
 
     if [ "$TABLE_EXISTS" = "0" ]; then
-        echo "[SIA] Database is empty. Running schema setup..."
-        php -r "
-            \$conn = new mysqli('${DB_HOST}', '${DB_USER}', '${DB_PASS}', '${DB_NAME}', ${DB_PORT});
-            \$conn->set_charset('utf8');
-            \$files = [
-                '/var/www/html/install/OpensisSchemaMysqlInc.sql',
-                '/var/www/html/install/OpensisProcsMysqlInc.sql',
-                '/var/www/html/install/OpensisTriggerMysqlInc.sql',
-                '/var/www/html/install/SqlForClientSchoolInc.php',
-            ];
-            foreach (\$files as \$f) {
-                if (!file_exists(\$f) || pathinfo(\$f, PATHINFO_EXTENSION) !== 'sql') continue;
-                echo \"Running: \$f\n\";
-                \$sql = file_get_contents(\$f);
-                \$conn->multi_query(\$sql);
-                while (\$conn->next_result()) { if (\$res = \$conn->store_result()) \$res->free(); }
-                echo \"Done: \$f\n\";
-            }
-            echo \"Schema setup complete.\n\";
-        "
-        echo "[SIA] Database initialized."
+        echo "[SIA] Database is empty. Running schema setup via mysql client..."
+        export MYSQL_PWD="${DB_PASS}"
+        for f in /var/www/html/install/OpensisSchemaMysqlInc.sql \
+                 /var/www/html/install/OpensisProcsMysqlInc.sql \
+                 /var/www/html/install/OpensisTriggerMysqlInc.sql; do
+            if [ -f "$f" ]; then
+                echo "[SIA] Importing: $f"
+                mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" "${DB_NAME}" < "$f" || true
+            fi
+        done
+        unset MYSQL_PWD
+        echo "[SIA] Database schema imported successfully."
     else
         echo "[SIA] Database already initialized — skipping schema setup."
     fi
