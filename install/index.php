@@ -40,15 +40,33 @@ $page_name = basename($_SERVER['PHP_SELF']);
         <link href="../assets/css/icons/fontawesome/styles.min.css" rel="stylesheet">
         <link rel="stylesheet" type="text/css" href="../assets/css/bootstrap.min.css">
         <link rel="stylesheet" href="assets/css/installer.css" type="text/css" />
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="js/jquery.min.js"></script>
         <script>
-            var iframeWin = document.getElementById('mainIframe').contentWindow;
-            $(iframeWin).on('resize', function () {
-                resizeIframe(iframeWin);
-            });
             function resizeIframe(obj) {
-                obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+                try {
+                    if (obj && obj.contentWindow && obj.contentWindow.document && obj.contentWindow.document.body) {
+                        obj.style.height = obj.contentWindow.document.body.scrollHeight + 'px';
+                    }
+                } catch (e) {
+                    // cross-origin or navigation in progress
+                }
             }
+
+            $(document).ready(function () {
+                var iframe = document.getElementById('mainIframe');
+                if (iframe) {
+                    $(iframe).on('load', function () {
+                        resizeIframe(this);
+                        try {
+                            if (this.contentWindow) {
+                                $(this.contentWindow).on('resize', function () {
+                                    resizeIframe(iframe);
+                                });
+                            }
+                        } catch (e) {}
+                    });
+                }
+            });
         </script>
         <noscript><META http-equiv=REFRESH content='0;url=../EnableJavascript.php' /></noscript>
     </head>
