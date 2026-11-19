@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 define("_studentInformationSystem", "نظام معلومات الطالب");
 define("_systemPreferences", "تفضيلات النظام");
 define("_setHalfDayAndFullDayMinutes", "حدد نصف يوم ودقائق يوم كامل");

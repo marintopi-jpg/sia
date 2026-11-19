@@ -37,8 +37,10 @@ function db_start()
         case 'mysqli':
 
             if ($connection->auto_init == true) {
-                $connection = $connection->init($DatabaseServer, $DatabaseUsername, $DatabasePassword, $DatabaseName);
-                mysqli_set_charset($connection, "utf8");
+                $connection = $connection->init($DatabaseServer, $DatabaseUsername, $DatabasePassword, $DatabaseName, $DatabasePort ?? 3306);
+                if ($connection && !$connection->connect_errno) {
+                    mysqli_set_charset($connection, "utf8");
+                }
             }
             break;
     }

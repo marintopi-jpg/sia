@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 

@@ -39,7 +39,9 @@ include_once "RemoveBackup.php";
 include_once 'lang/language.php';
 include_once "functions/PasswordHashFnc.php";
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $index_commit_in    =   "";
 $index_commit_out   =   "";

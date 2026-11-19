@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 define("_studentInformationSystem", "Sistemi i Informacionit të Nxënësve");
 define("_systemPreferences", "Preferencat e Sistemit");
 define("_setHalfDayAndFullDayMinutes", "Cakto minutat për gjysmë-dite dhe ditë të plotë");

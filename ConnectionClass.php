@@ -30,15 +30,15 @@ class ConnectDBOpensis
 {
     public $auto_init = true;
     
-    function init($DatabaseServer, $DatabaseUsername, $DatabasePassword, $DatabaseName)
+    function init($DatabaseServer, $DatabaseUsername, $DatabasePassword, $DatabaseName, $DatabasePort = 3306)
     {
-        $user_agent = explode('/', isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '');
-        if (isset($user_agent[0]) && $user_agent[0] == 'Mozilla') {
-            $conn = new mysqli($DatabaseServer, $DatabaseUsername, $DatabasePassword, $DatabaseName);
-            // Disable strict mode to ensure compatibility
-            if ($conn && !$conn->connect_errno) {
-                $conn->query("SET SESSION sql_mode = ''");
-            }
+        $port = !empty($DatabasePort) ? (int)$DatabasePort : 3306;
+        $conn = @new mysqli($DatabaseServer, $DatabaseUsername, $DatabasePassword, $DatabaseName, $port);
+        // Disable strict mode to ensure compatibility
+        if ($conn && !$conn->connect_errno) {
+            $conn->query("SET SESSION sql_mode = ''");
+            return $conn;
+        } elseif ($conn) {
             return $conn;
         }
         return null;

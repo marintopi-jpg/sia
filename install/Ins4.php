@@ -26,10 +26,11 @@
 #
 #***************************************************************************************
 
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-session_start();
+ini_set('display_errors', 0);
+error_reporting(0);
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once "../functions/PasswordHashFnc.php";
 

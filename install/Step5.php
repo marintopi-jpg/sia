@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 #**************************************************************************
 #  openSIS is a free student information system for public and non-public 
@@ -110,7 +110,7 @@ if (isset($_SESSION['mod']) && $_SESSION['mod']== 'upgrade') {
                 </section><!-- /.login -->
             </body>
         </html>';
-} elseif ($_SESSION['mod'] != 'upgrade') {
+} elseif (empty($_SESSION['mod']) || $_SESSION['mod'] != 'upgrade') {
     $myFile = "../Data.php";
     $fh = fopen($myFile, 'w');
 
@@ -118,11 +118,11 @@ if (isset($_SESSION['mod']) && $_SESSION['mod']== 'upgrade') {
 
         include '../functions/SqlSecurityFnc.php';
 
-        $THIS_server = sqlSecurityFilter($_SESSION['server'], 'no');
-        $THIS_username = sqlSecurityFilter($_SESSION['username'], 'no');
-        $THIS_password = sqlSecurityFilter($_SESSION['password'], 'no');
-        $THIS_db = sqlSecurityFilter($_SESSION['db'], 'no');
-        $THIS_port = sqlSecurityFilter($_SESSION['port'], 'no');
+        $THIS_server = sqlSecurityFilter($_SESSION['server'] ?? 'db', 'no');
+        $THIS_username = sqlSecurityFilter($_SESSION['username'] ?? 'root', 'no');
+        $THIS_password = sqlSecurityFilter($_SESSION['password'] ?? '', 'no');
+        $THIS_db = sqlSecurityFilter($_SESSION['db'] ?? 'sia', 'no');
+        $THIS_port = sqlSecurityFilter($_SESSION['port'] ?? '3306', 'no');
 
         $string .= "<" . "?php \n";
         $string .= "$" . "DatabaseType = 'mysqli'; \n";
@@ -138,22 +138,15 @@ if (isset($_SESSION['mod']) && $_SESSION['mod']== 'upgrade') {
 
     fclose($fh);
     $display_text = '';
-    if ($_SESSION['school_installed'] == 'both') {
-
-        $display_text = "A  school has been created in the name of: " . $_SESSION['sname'] . ".
-
-You need to follow the instructions in the administrator manual for setting up the school properly. The manual is located in the docs folder.
-<br><br>
-You have also installed the sample school data. You can select your school or the sample school by clicking on the drop down menu of the school select field on the upper right hand corner.";
-#You have also installed the sample school data, you can access it by clicking on the drop down menu  of  the school select field.";
-    } else if ($_SESSION['school_installed'] == 'user') {
-        $display_text = "A  school has been created in the name of: " . $_SESSION['sname'] . ".
-
-You need to follow the instructions in the administrator manual for setting up the school properly. The manual is located in the docs folder.";
-    } else if ($_SESSION['school_installed'] == 'sample') {
-        $display_text = "You have installed openSIS with a sample school data. Use this school to get familiar with the system and as a guide for creating your own school.  You can also follow the instructions in the administrator manual for setting up and configuring a new school. The manual is located in the docs folder.";
+    $school_name = isset($_SESSION['sname']) ? $_SESSION['sname'] : 'School';
+    $school_installed = isset($_SESSION['school_installed']) ? $_SESSION['school_installed'] : 'user';
+    if ($school_installed == 'both') {
+        $display_text = "A school has been created in the name of: " . $school_name . ".<br><br>You need to follow the instructions in the administrator manual for setting up the school properly. The manual is located in the docs folder.<br><br>You have also installed the sample school data. You can select your school or the sample school by clicking on the drop down menu of the school select field on the upper right hand corner.";
+    } else if ($school_installed == 'user') {
+        $display_text = "A school has been created in the name of: " . $school_name . ".<br><br>You need to follow the instructions in the administrator manual for setting up the school properly. The manual is located in the docs folder.";
+    } else if ($school_installed == 'sample') {
+        $display_text = "You have installed openSIS with sample school data. Use this school to get familiar with the system and as a guide for creating your own school. You can also follow the instructions in the administrator manual for setting up and configuring a new school. The manual is located in the docs folder.";
     }
-    $display_text = "You have installed openSIS with a sample school data. Use this school to get familiar with the system and as a guide for creating your own school.  You can also follow the instructions in the administrator manual for setting up and configuring a new school. The manual is located in the docs folder.";
     echo '<!DOCTYPE html>
         <html lang="en">
             <head>
@@ -169,7 +162,7 @@ You need to follow the instructions in the administrator manual for setting up t
             <body class="outer-body">
                 <section class="login">
                     <div class="login-wrapper">
-                        <div class="panel"">
+                        <div class="panel">
                         <div class="panel-heading">                            
                             <div class="logo">
                                 <img src="assets/images/opensis_logo.png" alt="SIA">

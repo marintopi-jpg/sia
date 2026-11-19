@@ -24,10 +24,11 @@ chmod 600 /root/.my.cnf
 MYSQL_APP="mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p${DB_PASS}"
 MYSQL_ROOT="mysql -h ${DB_HOST} -P ${DB_PORT} -u root -p${DB_ROOT_PASS}"
 
-# ── Generate Data.php ─────────────────────────────────────────────────────────
+# ── Generate Data.php (if auto-install enabled or force regen) ────────────────
 if [ ! -f "$DATA_FILE" ] || [ "${FORCE_DATA_REGEN:-false}" = "true" ]; then
-    echo "[SIA] Generating Data.php..."
-    cat > "$DATA_FILE" <<EOF
+    if [ "${SIA_AUTO_INSTALL:-true}" = "true" ] || [ "${FORCE_DATA_REGEN:-false}" = "true" ]; then
+        echo "[SIA] Generating Data.php..."
+        cat > "$DATA_FILE" <<EOF
 <?php
 \$DatabaseType     = 'mysqli';
 \$DatabaseServer   = '${DB_HOST}';
@@ -37,9 +38,12 @@ if [ ! -f "$DATA_FILE" ] || [ "${FORCE_DATA_REGEN:-false}" = "true" ]; then
 \$DatabasePort     = '${DB_PORT}';
 ?>
 EOF
-    chown www-data:www-data "$DATA_FILE"
-    chmod 640 "$DATA_FILE"
-    echo "[SIA] Data.php created."
+        chown www-data:www-data "$DATA_FILE"
+        chmod 640 "$DATA_FILE"
+        echo "[SIA] Data.php created."
+    else
+        echo "[SIA] SIA_AUTO_INSTALL is false — skipping Data.php so web installer /install/ can run."
+    fi
 else
     echo "[SIA] Data.php exists — skipping."
 fi
@@ -62,7 +66,7 @@ until php -r "
 done
 echo "[SIA] MySQL is ready!"
 
-# ── Auto-install DB schema ────────────────────────────────────────────────────
+# ── Auto-install DB schema & seed data ────────────────────────────────────────
 if [ "${SIA_AUTO_INSTALL:-false}" = "true" ]; then
     echo "[SIA] Checking DB initialization..."
 
@@ -71,9 +75,9 @@ if [ "${SIA_AUTO_INSTALL:-false}" = "true" ]; then
     TC=$(echo "$TC" | tr -d '[:space:]')
 
     if [ "${TC:-0}" -lt "50" ]; then
-        echo "[SIA] Only ${TC} tables — importing schema as root..."
+        echo "[SIA] Only ${TC} tables — importing schema and seed data as root..."
 
-        # Drop existing objects
+        # Drop existing objects for clean install
         ${MYSQL_ROOT} "${DB_NAME}" -e "
             SET FOREIGN_KEY_CHECKS=0;
             SET @v=NULL;
@@ -90,66 +94,44 @@ if [ "${SIA_AUTO_INSTALL:-false}" = "true" ]; then
             SET FOREIGN_KEY_CHECKS=1;
         " 2>/dev/null && echo "[SIA] DB cleaned."
 
-        # Import SQL files
+        # Import openSIS SQL schema, stored procedures, triggers, and full seed data
         for f in \
             /var/www/html/install/OpensisSchemaMysqlInc.sql \
             /var/www/html/install/OpensisProcsMysqlInc.sql \
-            /var/www/html/install/OpensisTriggerMysqlInc.sql; do
+            /var/www/html/install/OpensisTriggerMysqlInc.sql \
+            /var/www/html/docker/seed-opensis.sql; do
             if [ -f "$f" ]; then
                 FNAME=$(basename "$f")
                 echo "[SIA] Importing ${FNAME}..."
                 ${MYSQL_ROOT} "${DB_NAME}" < "$f"
                 RC=$?
                 [ $RC -eq 0 ] && echo "[SIA] OK: ${FNAME}" || echo "[SIA] WARN: ${FNAME} (exit ${RC}) — continuing"
+            else
+                echo "[SIA] Notice: File not found: $f"
             fi
         done
 
-        # Seed essential data + admin
-        echo "[SIA] Seeding admin account (os4ed / os4ed)..."
+        echo "[SIA] Verifying installation..."
         ${MYSQL_ROOT} "${DB_NAME}" -e "
-            SET sql_mode='NO_ENGINE_SUBSTITUTION';
-            INSERT IGNORE INTO \`app\` (\`name\`,\`value\`) VALUES
-                ('title','SIA'),('version','9.3'),('syear','2024');
-            INSERT IGNORE INTO \`schools\`
-                (\`id\`,\`syear\`,\`title\`,\`short_name\`,\`last_updated\`)
-                VALUES (1,2024,'Shkolla','SIA',NOW());
-            INSERT IGNORE INTO \`school_years\`
-                (\`syear\`,\`title\`,\`start_date\`,\`end_date\`)
-                VALUES (2024,'2023-2024','2023-09-01','2024-06-30');
-            INSERT IGNORE INTO \`user_profiles\`
-                (\`id\`,\`profile\`,\`title\`,\`last_updated\`) VALUES
-                (0,'admin','Super Administrator',NOW()),
-                (1,'admin','Administrator',NOW()),
-                (2,'teacher','Teacher',NOW()),
-                (3,'student','Student',NOW()),
-                (4,'parent','Parent',NOW());
-            INSERT IGNORE INTO \`staff\`
-                (\`staff_id\`,\`syear\`,\`school_id\`,\`first_name\`,\`last_name\`,
-                 \`username\`,\`user_name\`,\`profile_id\`,\`last_updated\`)
-                VALUES (1,2024,1,'Super','Administrator','os4ed','os4ed',0,NOW());
-            INSERT IGNORE INTO \`login_authentication\`
-                (\`id\`,\`user_id\`,\`profile_id\`,\`username\`,\`password\`,
-                 \`last_login\`,\`failed_login\`,\`last_updated\`)
-                VALUES (1,1,0,'os4ed',
-                '\$2y\$10\$yR8cf7lao0ed9HAyzsD1wuxerYtxXAuhPGrp5nHXI8lFoWh.ZaxJC',
-                NOW(),0,NOW());
-            SELECT CONCAT('Tables: ', COUNT(*)) as result
+            SELECT CONCAT('Tables created: ', COUNT(*)) as result
                 FROM information_schema.tables WHERE table_schema='${DB_NAME}';
-            SELECT CONCAT('Admin: ', username) as result FROM \`login_authentication\` LIMIT 1;
-        " && echo "[SIA] Setup complete!"
+            SELECT CONCAT('Admin username: ', username) as result
+                FROM \`login_authentication\` LIMIT 1;
+        "
+        echo "[SIA] Setup complete! Default admin credentials: os4ed / os4ed"
 
     else
-        echo "[SIA] DB already has ${TC} tables — skipping."
+        echo "[SIA] DB already has ${TC} tables — skipping auto-import."
     fi
 fi
 
 # ── Fix file permissions ──────────────────────────────────────────────────────
 echo "[SIA] Setting permissions..."
 chown -R www-data:www-data /var/www/html
-find /var/www/html -type d -exec chmod 755 {} \;
-find /var/www/html -type f -exec chmod 644 {} \;
 chmod 640 /var/www/html/Data.php 2>/dev/null || true
 chmod -R 775 /var/www/html/assets 2>/dev/null || true
+chmod -R 775 /var/www/html/modules 2>/dev/null || true
+chmod -R 775 /var/www/html/tmp 2>/dev/null || true
 echo "[SIA] Permissions OK."
 
 # ── Start Apache ──────────────────────────────────────────────────────────────

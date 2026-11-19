@@ -55,8 +55,10 @@ if (!defined('WAREHOUSE_PHP')) {
         closedir($handle);
     }
 
-    // Start Session.
-    session_start();
+    // Start Session safely.
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 
     if (empty($_SESSION['STAFF_ID']) && empty($_SESSION['STUDENT_ID']) && strpos($_SERVER['PHP_SELF'] ?? '', 'index.php') === false) {
         header('Location: index.php');

@@ -1,0 +1,239 @@
+================================================================================
+                    SIA (openSIS 9.3) KNOWLEDGE BASE & SYSTEM GUIDE
+================================================================================
+Version: 1.0
+Target Stack: Apache 2.4 | PHP 8.3 (php:8.3-apache) | MySQL 8.0.46 (mysql:8.0) | Docker Compose
+Project: SIA - Student Information System (fork/deployment of openSIS Community 9.3)
+Date: 2026-11-19
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PËRMBLEDHJA DHE ARKITEKTURA E SISTEMIT (ARCHITECTURE OVERVIEW)
+--------------------------------------------------------------------------------
+Projekti SIA është një platformë e menaxhimit të shkollave (Student Information System)
+e bazuar në openSIS Community Edition versioni 9.3. Sistemi funksionon brenda kontejnerëve
+Docker përmes Docker Compose:
+
+1. Shërbimi i Aplikacionit ("app"):
+   - Image: php:8.3-apache (Debian Bookworm)
+   - Kontejneri: sia_app
+   - Porta në Host: 8080 (e ndryshueshme me APP_PORT në .env)
+   - Dokumentacioni Web (DocumentRoot): /var/www/html
+   - Modulet e instaluara të PHP: mysqli, pdo, pdo_mysql, gd (me freetype & jpeg),
+     zip, curl, mbstring, xml, opcache.
+   - Konfigurimi i Apache: docker/apache-sia.conf me VirtualHost në portën 80,
+     AllowOverride All për rregullat e .htaccess dhe log-e te sia_error.log.
+   - Skripti fillestar (Entrypoint): docker/entrypoint.sh
+
+2. Shërbimi i Bazës së të Dhënave ("db"):
+   - Image: mysql:8.0 (MySQL Community Server 8.0.46)
+   - Kontejneri: sia_db
+   - Porta në Host: 3306 (e ndryshueshme me DB_EXPOSE_PORT në .env)
+   - Parametrat jetikë të mysqld:
+     * --sql-mode="NO_ENGINE_SUBSTITUTION" (Çaktivizon ONLY_FULL_GROUP_BY dhe STRICT modes)
+     * --log-bin-trust-function-creators=1 (Lejon krijimin e Funksioneve/Triggers)
+     * --default-authentication-plugin=mysql_native_password
+     * --character-set-server=utf8mb4 / --collation-server=utf8mb4_unicode_ci
+
+3. Skedari i Konfigurimit të Lidhjes:
+   - /var/www/html/Data.php (përmban variablat $DatabaseServer, $DatabaseUsername,
+     $DatabasePassword, $DatabaseName, $DatabasePort, $DatabaseType='mysqli').
+
+
+--------------------------------------------------------------------------------
+2. KRONOLOGJIA E GABIMEVE DHE ANALIZA NGA BISEDA.TXT (LESSONS LEARNED)
+--------------------------------------------------------------------------------
+Nga analiza e thellë e historikut të bisedës (Biseda.txt), u identifikuan 8 probleme
+kryesore që pengonin funksionimin e sistemit:
+
+[GABIMI 1] "no such service: sia_app"
+- Simptoma: Komanda `docker compose logs -f sia_app` dështoi me gabim.
+- Shkaku: `sia_app` është emri i kontejnerit (container_name), ndërsa shërbimi në
+  docker-compose.yml quhet `app`.
+- Zgjidhja: Përdorimi i `docker compose logs -f app` ose `docker logs -f sia_app`.
+
+[GABIMI 2] Kurthi i Auto-Install ("DB already has 102 tables — skipping")
+- Simptoma: Kontejneri ngrihej, importonte skemën prej 102 tabelash, por përdoruesi
+  admin nuk futej dot në sistem ("Hyrje e pavlefshme").
+- Shkaku Rrënjësor: Skripti `entrypoint.sh` ekzekutonte një pyetësor manual me kolona
+  të pasakta:
+  * Tabela `schools` NUK e ka kolonën `short_name`.
+  * Tabela `staff` NUK i ka kolonat `syear`, `school_id`, `username`, `user_name`.
+  * Pyetësori dështoi në heshtje, skema mbeti me 102 tabela bosh pa të dhëna,
+    dhe në çdo rindezje `entrypoint.sh` shihte `tables >= 50` dhe anashkalonte instalimin!
+- Mësimi: Asnjëherë mos përdor pyetësorë me kolona me hamendësim; duhet importuar
+  skedari i plotë zyrtar i të dhënave fillestare.
+
+[GABIMI 3] Zëvendësimi i Variablave Bash në Terminal
+- Simptoma: Ekzekutimi i `docker exec -it sia_app php -r "require 'Data.php'; ..."` dha
+  paralajmërime "Undefined variable $DatabaseServer" dhe "GABIM: No such file or directory".
+- Shkaku: Terminali lokal Bash jashtë kontejnerit i lexoi `$DatabaseServer` si variabla
+  lokale bosh para se t'ia kalonte komandën PHP-së.
+- Zgjidhja: Përdorimi i heredoc me thonjëza teke: `docker exec -i sia_app php << 'EOF'`.
+
+[GABIMI 4] Bllokimi i Instaluesit Grafik (/install/) kur ekziston Data.php
+- Simptoma: Hapja e `http://IP:8080/install/` kthente ridrejtim ose ekran të bardhë.
+- Shkaku: Kodi i openSIS te index.php bllokon ose ridrejton instaluesin nëse skedari
+  Data.php ekziston tashmë në disk.
+- Mësimi: Nëse duhet përdorur instaluesi web, Data.php duhet fshirë dhe baza duhet të jetë bosh.
+
+[GABIMI 5] Headers Already Sent në Step0.php
+- Simptoma:
+  "Warning: session_start(): Session cannot be started after headers have already been sent in /var/www/html/install/Step0.php on line 29"
+  "Warning: session_destroy(): Trying to destroy uninitialized session in Step0.php on line 30"
+- Shkaku:
+  1) Skedarët PHP të instaluesit kishin bajte UTF-8 BOM në fillim të tyre.
+  2) Imazhi `php:8.3-apache` e ka `output_buffering = Off` si parazgjedhje.
+- Zgjidhja: Aktivizimi i `output_buffering = 4096` në php.ini dhe heqja e BOM-it nga skedarët.
+
+[GABIMI 6] Ekrani i Bardhë pas Login (Content-Length: 3)
+- Simptoma: Login me `os4ed / os4ed` pranohej, por faqja e brendshme (index.php) dilte bosh
+  me përgjigje HTTP 200 dhe Content-Length: 3.
+- Shkaku Rrënjësor:
+  1) Tabelat `staff_school_relationship`, `staff_school_info` (ku kërkohet OPENSIS_ACCESS='Y')
+     dhe `system_preference_misc` ishin bosh.
+  2) Tabela `app` kishte rreshta të katërfishtë sepse nuk ka Primary Key.
+  3) Rreshti `error_reporting(0)` fshihte paralajmërimet.
+  4) **Zbulimi Madhor:** 3 bajtet ishin UTF-8 BOM (0xEF, 0xBB, 0xBF) nga skedarët e gjuhëve!
+
+[GABIMI 7] Paralajmërimi në Step5.php (PHP 8.3 Undefined Array Key)
+- Simptoma: "Warning: Undefined array key 'mod' in /var/www/html/install/Step5.php on line 113".
+- Shkaku: Në PHP 8.3, thirrja e `$_SESSION['mod']` pa e verifikuar me `isset()` ose `empty()`
+  lëshon paralajmërim `E_WARNING`, i cili shfaqej në ekran dhe prishte hapat finalë.
+
+[GABIMI 8] Bllokimi i Klientëve jo-Shfletues në ConnectionClass.php
+- Simptoma: Thirrjet nga `curl`, healthchecks, ose skriptet CLI nuk lidheshin me DB.
+- Shkaku: Te `ConnectionClass.php`, metoda `init()` kishte këtë kod absurd:
+  `if (isset($user_agent[0]) && $user_agent[0] == 'Mozilla') { $conn = new mysqli(...); }`
+  Nëse User-Agent nuk ishte shfletues (p.sh. curl), ajo kthente `null` dhe shkaktonte Fatal Error!
+
+
+--------------------------------------------------------------------------------
+3. ZBULIMET DHE RREGULLIMET TEKNIKE PËRFUNDIMTARE (ROOT CAUSES & FIXES)
+--------------------------------------------------------------------------------
+
+1. HEQJA E UTF-8 BOM NGA 26 SKEDARË PHP:
+   - Problemi: 26 skedarë kishin bajtet 0xEF, 0xBB, 0xBF në krye të tyre.
+   - Skedarët e pastruar:
+     * install/Step0.php, Step0.1.php, Step1.php, Step2.php, Step3.php, Step4.php, Step5.php
+     * install/index.php, Ins1.php, Selectdb.php, SystemCheck.php, Upgrade.php, Upgrade6.php, UpgradeProcessingMsg.php
+     * lang/lang_sq.php, lang_en.php, lang_ar.php, lang_es.php, lang_fr.php
+     * ForgotPass.php, ForgotPassUserName.php, PasswordCheck.php, ResetUserInfo.php
+     * api/SchoolInfo.php, api/StaffInfo.php, api/StudentEnrollmentInfo.php
+   - Rezultati: Nuk ka më dërgim të hershëm të bajteve, `session_start()` dhe `header()`
+     funksionojnë pa asnjë konflikt.
+
+2. KONFIGURIMI I PHP 8.3 NË DOCKERFILE:
+   - Skedari: Dockerfile
+   - Shtuar në `/usr/local/etc/php/conf.d/sia.ini`:
+     * `output_buffering = 4096` (garanton mbajtjen e kokave HTTP në buffer)
+     * `error_reporting = E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED` (parandalon ndërprerjen nga kodet legacy)
+     * `display_errors = Off`
+     * `log_errors = On`
+     * `error_log = /var/log/apache2/php_errors.log`
+
+3. SKEDARI I PLOTË I TË DHËNAVE: docker/seed-opensis.sql (54.8 KB)
+   - Krijuar nga nxjerrja e plotë e të dhënave zyrtare të openSIS 9.3:
+     * `app`: Version 9.3, title 'SIA', syear 2024
+     * `schools`: id=1, syear=2024, title='Shkolla'
+     * `school_years`: marking_period_id=1, syear='2024', school_id=1, title='Full Year', short_name='FY'
+     * `system_preference` & `system_preference_misc`: Maintenance switch 'N', fail_count=3
+     * `user_profiles`: Administrator (0, 1), Teacher (2), Student (3), Parent (4), Admin Asst (5)
+     * `staff`: Super Administrator (staff_id=1, profile_id=0, profile='admin')
+     * `staff_school_relationship`: staff_id=1, school_id=1, syear=2024
+     * `staff_school_info`: staff_id=1, opensis_access='Y', opensis_profile='0', school_access='1'
+     * `login_authentication`: id=1, user_id=1, profile_id=0, username='os4ed',
+       password='$2y$10$yR8cf7lao0ed9HAyzsD1wuxerYtxXAuhPGrp5nHXI8lFoWh.ZaxJC' (os4ed)
+     * `profile_exceptions`: Qindra rregulla lejedhënieje për modulet e sistemit.
+     * `program_config`, `language`, `ethnicity`, `marking_period_id_generator`, etj.
+
+4. RISHKRIMI I docker/entrypoint.sh:
+   - Formati: Pastruar në standard UNIX LF pa BOM.
+   - Logjika:
+     * Kur `SIA_AUTO_INSTALL=true` (ose e papërcaktuar): gjeneron Data.php, pret MySQL,
+       dhe nëse databaza ka <50 tabela importon skemën, procedurat, triggers dhe `seed-opensis.sql`.
+     * Kur `SIA_AUTO_INSTALL=false`: NUK e gjeneron Data.php, duke lënë rrugën të hapur
+       që përdoruesi të hapë direkt magjistarin `/install/`.
+     * Zbaton lejet e duhura: `chown -R www-data:www-data`, `chmod 640 Data.php`,
+       `chmod -R 775 assets modules tmp`.
+
+5. RREGULLIMET NË KODIN E APPLIKACIONIT:
+   - install/Step5.php:
+     * Rregulluar kushti `} elseif (empty($_SESSION['mod']) || $_SESSION['mod'] != 'upgrade') {`
+     * Rregulluar leximi i sigurt i `$_SESSION['school_installed']` dhe `$_SESSION['sname']`
+     * Korrigjuar gabimi në HTML `<div class="panel">` (ishte `<div class="panel"">`)
+   - ConnectionClass.php & DatabaseInc.php:
+     * Hequr kushti i detyrueshëm i User-Agent `Mozilla`.
+     * Shtuar mbështetja për portën e personalizuar `$DatabasePort`.
+   - Warehouse.php, index.php, install/Step0.php, install/Ins4.php:
+     * Mbështjellë thirrjet me `if (session_status() === PHP_SESSION_NONE) session_start();`.
+
+
+--------------------------------------------------------------------------------
+4. UDHËZUESI OPERACIONAL I DISPLAJIMIT (DEPLOYMENT PLAYBOOK)
+--------------------------------------------------------------------------------
+
+MËNYRA A: INSTALIM AUTOMATIK ME NJË KOMANDË (E REKOMANDUAR)
+Kjo mënyrë ngre të gjithë sistemin automatikisht brenda disa sekondave:
+
+1. Sigurohuni që në skedarin `.env` keni:
+   SIA_AUTO_INSTALL=true
+   APP_PORT=8080
+   DB_NAME=sia
+   DB_USER=sia_user
+   DB_PASS=sia_password
+   MYSQL_ROOT_PASSWORD=root_secret
+
+2. Ekzekutoni në terminalin e serverit:
+   docker compose down -v
+   docker compose up -d --build
+
+3. Kontrolloni ecurinë e instalimit:
+   docker logs -f sia_app
+
+   Kur shfaqet mesazhi:
+   "[SIA] Setup complete! Default admin credentials: os4ed / os4ed"
+   "[SIA] Starting Apache..."
+   sistemi është gati!
+
+4. Hyni në shfletues:
+   URL: http://IP-E-SERVERIT:8080/ (ose http://localhost:8080/)
+   Përdoruesi (Username): os4ed
+   Fjalëkalimi (Password): os4ed
+
+
+MËNYRA B: INSTALIMI PËRMES MAGJISTARIT WEB (/install/)
+Nëse dëshironi të kryeni instalimin grafik manualisht nga shfletuesi:
+
+1. Në skedarin `.env` vendosni:
+   SIA_AUTO_INSTALL=false
+
+2. Ngrini kontejnerët me pastrim vëllimesh:
+   docker compose down -v
+   docker compose up -d --build
+
+3. Hapni në shfletues:
+   http://IP-E-SERVERIT:8080/install/
+
+4. Të dhënat që duhet të plotësoni gjatë hapave:
+   - Database Host / Server: db (MOS vendosni localhost)
+   - Database Port: 3306
+   - Database Username: root
+   - Database Password: root_secret (nga .env)
+   - Database Name: sia
+   - Plotësoni emrin e shkollës, datat dhe krijoni administratorin tuaj.
+   - Në Step 5 klikoni "Proceed to openSIS Login".
+
+
+--------------------------------------------------------------------------------
+5. RREGULLAT E ARDHSHME DHE MIRËMBAJTJA (BEST PRACTICES)
+--------------------------------------------------------------------------------
+1. Mos ruani skedarë PHP me kodim "UTF-8 with BOM". Përdorni gjithmonë "UTF-8 without BOM"
+   (UTF-8 pa shenjë renditjeje bajtesh) në VS Code, Notepad++ apo çdo redaktues tjetër.
+2. Nëse ndryshoni strukturën e tabelave në MySQL 8.0, kini parasysh që `sql_mode`
+   duhet të përmbajë `NO_ENGINE_SUBSTITUTION` dhe të mos aktivizohet `ONLY_FULL_GROUP_BY`.
+3. Për çdo procedurë apo funksion të ri SQL në MySQL 8.0, nevojitet parametri
+   `log_bin_trust_function_creators=1`.
+4. Nëse modifikoni Dockerfile ose entrypoint.sh në Windows, sigurohuni që skedarët
+   bash (.sh) të ruhen me fund rreshti standard UNIX LF (`\n`) dhe jo Windows CRLF (`\r\n`).
+================================================================================
