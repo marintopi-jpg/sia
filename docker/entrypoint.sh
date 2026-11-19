@@ -8,11 +8,15 @@ DB_PORT="${DB_PORT:-3306}"
 DB_NAME="${DB_NAME:-sia}"
 DB_USER="${DB_USER:-sia_user}"
 DB_PASS="${DB_PASS:-sia_password}"
+DB_ROOT_PASS="${MYSQL_ROOT_PASSWORD:-root_secret}"
 DATA_FILE="/var/www/html/Data.php"
+
+MYSQL_APP="mysql --ssl-mode=DISABLED -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER}"
+MYSQL_ROOT="mysql --ssl-mode=DISABLED -h ${DB_HOST} -P ${DB_PORT} -u root -p${DB_ROOT_PASS}"
 
 # ── Generate Data.php ─────────────────────────────────────────────────────────
 if [ ! -f "$DATA_FILE" ] || [ "${FORCE_DATA_REGEN:-false}" = "true" ]; then
-    echo "[SIA] Generating Data.php with database config..."
+    echo "[SIA] Generating Data.php..."
     cat > "$DATA_FILE" <<EOF
 <?php
 \$DatabaseType     = 'mysqli';
@@ -25,40 +29,48 @@ if [ ! -f "$DATA_FILE" ] || [ "${FORCE_DATA_REGEN:-false}" = "true" ]; then
 EOF
     chown www-data:www-data "$DATA_FILE"
     chmod 640 "$DATA_FILE"
-    echo "[SIA] Data.php created successfully."
+    echo "[SIA] Data.php created."
 else
-    echo "[SIA] Data.php already exists — skipping generation."
+    echo "[SIA] Data.php exists — skipping."
 fi
 
-# ── Wait for MySQL to be ready ────────────────────────────────────────────────
+# ── Wait for MySQL ────────────────────────────────────────────────────────────
 echo "[SIA] Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
 export MYSQL_PWD="${DB_PASS}"
-MAX_TRIES=90
-COUNT=0
-until mysqladmin ping -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" --silent 2>/dev/null; do
-    COUNT=$((COUNT + 1))
-    if [ $COUNT -ge $MAX_TRIES ]; then
-        echo "[SIA] ERROR: MySQL did not become ready after ${MAX_TRIES} attempts. Exiting."
-        exit 1
-    fi
+MAX_TRIES=90; COUNT=0
+until mysqladmin --ssl-mode=DISABLED ping -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" --silent 2>/dev/null; do
+    COUNT=$((COUNT+1))
+    [ $COUNT -ge $MAX_TRIES ] && echo "[SIA] ERROR: MySQL timeout." && exit 1
     echo "[SIA] Waiting... (${COUNT}/${MAX_TRIES})"
     sleep 2
 done
 echo "[SIA] MySQL is ready!"
 
-# ── Auto-install database schema on first run ─────────────────────────────────
+# ── Auto-install DB schema ────────────────────────────────────────────────────
 if [ "${SIA_AUTO_INSTALL:-false}" = "true" ]; then
-    echo "[SIA] Checking if database '${DB_NAME}' needs initialization..."
+    echo "[SIA] Checking DB initialization..."
 
-    TABLE_COUNT=$(mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" \
-        --batch --skip-column-names \
+    TC=$(${MYSQL_APP} --batch --skip-column-names \
         -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';" 2>/dev/null || echo "0")
+    TC=$(echo "$TC" | tr -d '[:space:]')
 
-    # Trim whitespace
-    TABLE_COUNT=$(echo "$TABLE_COUNT" | tr -d '[:space:]')
+    if [ "${TC:-0}" -lt "50" ]; then
+        echo "[SIA] Only ${TC} tables found — running full schema import as root..."
+        export MYSQL_PWD="${DB_ROOT_PASS}"
 
-    if [ "${TABLE_COUNT:-0}" -lt "5" ]; then
-        echo "[SIA] Database has ${TABLE_COUNT} tables — running schema setup..."
+        # Drop existing objects cleanly
+        ${MYSQL_ROOT} "${DB_NAME}" -e "
+            SET FOREIGN_KEY_CHECKS=0;
+            SET @v=NULL;
+            SELECT GROUP_CONCAT('DROP VIEW IF EXISTS \`',table_name,'\`') INTO @v
+                FROM information_schema.views WHERE table_schema='${DB_NAME}';
+            SET @v=IFNULL(@v,'SELECT 1'); PREPARE s FROM @v; EXECUTE s; DEALLOCATE PREPARE s;
+            SET @t=NULL;
+            SELECT GROUP_CONCAT('DROP TABLE IF EXISTS \`',table_name,'\`') INTO @t
+                FROM information_schema.tables WHERE table_schema='${DB_NAME}' AND table_type='BASE TABLE';
+            SET @t=IFNULL(@t,'SELECT 1'); PREPARE s FROM @t; EXECUTE s; DEALLOCATE PREPARE s;
+            SET FOREIGN_KEY_CHECKS=1;
+        " 2>/dev/null && echo "[SIA] DB cleaned."
 
         for f in \
             /var/www/html/install/OpensisSchemaMysqlInc.sql \
@@ -66,29 +78,42 @@ if [ "${SIA_AUTO_INSTALL:-false}" = "true" ]; then
             /var/www/html/install/OpensisTriggerMysqlInc.sql; do
             if [ -f "$f" ]; then
                 FNAME=$(basename "$f")
-                echo "[SIA] Importing: ${FNAME} ..."
-                mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" "${DB_NAME}" < "$f"
+                echo "[SIA] Importing ${FNAME}..."
+                ${MYSQL_ROOT} "${DB_NAME}" < "$f"
                 RC=$?
-                if [ $RC -ne 0 ]; then
-                    echo "[SIA] WARNING: ${FNAME} finished with exit code ${RC} — continuing."
-                else
-                    echo "[SIA] OK: ${FNAME} imported."
-                fi
-            else
-                echo "[SIA] SKIP: $f not found."
+                [ $RC -eq 0 ] && echo "[SIA] OK: ${FNAME}" || echo "[SIA] WARN: ${FNAME} (exit ${RC})"
             fi
         done
 
-        echo "[SIA] Schema setup complete."
+        # Seed essential data + admin account
+        echo "[SIA] Seeding admin account..."
+        ${MYSQL_ROOT} "${DB_NAME}" -e "
+            SET sql_mode='NO_ENGINE_SUBSTITUTION';
+            INSERT IGNORE INTO \`app\` (\`name\`,\`value\`) VALUES ('title','SIA'),('version','9.3'),('syear','2024');
+            INSERT IGNORE INTO \`schools\` (\`id\`,\`syear\`,\`title\`,\`short_name\`,\`last_updated\`) VALUES (1,2024,'Shkolla','SIA',NOW());
+            INSERT IGNORE INTO \`school_years\` (\`syear\`,\`title\`,\`start_date\`,\`end_date\`) VALUES (2024,'2023-2024','2023-09-01','2024-06-30');
+            INSERT IGNORE INTO \`user_profiles\` (\`id\`,\`profile\`,\`title\`,\`last_updated\`) VALUES
+                (0,'admin','Super Administrator',NOW()),(1,'admin','Administrator',NOW()),
+                (2,'teacher','Teacher',NOW()),(3,'student','Student',NOW()),(4,'parent','Parent',NOW());
+            INSERT IGNORE INTO \`staff\` (\`staff_id\`,\`syear\`,\`school_id\`,\`first_name\`,\`last_name\`,\`username\`,\`user_name\`,\`profile_id\`,\`last_updated\`)
+                VALUES (1,2024,1,'Super','Administrator','os4ed','os4ed',0,NOW());
+            INSERT IGNORE INTO \`login_authentication\` (\`id\`,\`user_id\`,\`profile_id\`,\`username\`,\`password\`,\`last_login\`,\`failed_login\`,\`last_updated\`)
+                VALUES (1,1,0,'os4ed','\$2y\$10\$yR8cf7lao0ed9HAyzsD1wuxerYtxXAuhPGrp5nHXI8lFoWh.ZaxJC',NOW(),0,NOW());
+        " && echo "[SIA] Admin account seeded (os4ed / os4ed)."
+
+        TC2=$(${MYSQL_ROOT} "${DB_NAME}" --batch --skip-column-names \
+            -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}';" 2>/dev/null)
+        echo "[SIA] Final table count: ${TC2}"
+        export MYSQL_PWD="${DB_PASS}"
     else
-        echo "[SIA] DB already has ${TABLE_COUNT} tables — skipping schema."
+        echo "[SIA] DB already has ${TC} tables — skipping schema import."
     fi
 fi
 
 unset MYSQL_PWD
 
-# ── Fix file permissions ──────────────────────────────────────────────────────
-echo "[SIA] Setting file permissions..."
+# ── File permissions ──────────────────────────────────────────────────────────
+echo "[SIA] Setting permissions..."
 chown -R www-data:www-data /var/www/html
 find /var/www/html -type d -exec chmod 755 {} \;
 find /var/www/html -type f -exec chmod 644 {} \;

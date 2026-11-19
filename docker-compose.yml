@@ -15,8 +15,9 @@ services:
       DB_NAME: ${DB_NAME:-sia}
       DB_USER: ${DB_USER:-sia_user}
       DB_PASS: ${DB_PASS:-sia_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secret}
       # Set to true to auto-install DB schema on first boot
-      SIA_AUTO_INSTALL: ${SIA_AUTO_INSTALL:-false}
+      SIA_AUTO_INSTALL: ${SIA_AUTO_INSTALL:-true}
       # Set to true to regenerate Data.php even if it already exists
       FORCE_DATA_REGEN: ${FORCE_DATA_REGEN:-false}
     volumes:
